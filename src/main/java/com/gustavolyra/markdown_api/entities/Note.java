@@ -16,10 +16,14 @@ public class Note {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String title;
+
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     private byte[] markDown;
 
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     private byte[] html;
 
 

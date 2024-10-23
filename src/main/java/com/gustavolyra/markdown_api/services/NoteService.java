@@ -1,11 +1,15 @@
 package com.gustavolyra.markdown_api.services;
 
+import com.gustavolyra.markdown_api.dto.NoteDto;
 import com.gustavolyra.markdown_api.entities.Note;
 import com.gustavolyra.markdown_api.repositories.NoteRepository;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -20,10 +24,15 @@ public class NoteService {
         this.noteRepository = noteRepository;
     }
 
+    @Transactional
     public void processAndSaveFile(MultipartFile file) throws IOException {
         String content = new String(file.getBytes());
         String html = renderMarkdownToHtml(content);
-        noteRepository.save(Note.builder().markDown(content.getBytes()).html(html.getBytes()).build());
+        noteRepository.save(Note.builder()
+                .markDown(content.getBytes())
+                .html(html.getBytes())
+                .title(file.getOriginalFilename())
+                .build());
 
     }
 
@@ -33,4 +42,10 @@ public class NoteService {
         HtmlRenderer renderer = HtmlRenderer.builder().build();
         return renderer.render(document);
     }
+
+    @Transactional
+    public Page<NoteDto> findAll(Pageable pageable) {
+        return noteRepository.findAll(pageable).map(NoteDto::new);
+    }
+
 }
