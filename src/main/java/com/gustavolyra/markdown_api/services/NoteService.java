@@ -1,8 +1,9 @@
 package com.gustavolyra.markdown_api.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gustavolyra.markdown_api.dto.GrammarResponseDto;
+import com.gustavolyra.markdown_api.dto.Match;
 import com.gustavolyra.markdown_api.dto.NoteDto;
 import com.gustavolyra.markdown_api.entities.Note;
 import com.gustavolyra.markdown_api.exceptions.InvalidParamException;
@@ -72,7 +73,7 @@ public class NoteService {
         return renderMarkdownToHtml(markdownContent);
     }
 
-    public JsonNode checkGrammar(String text, String language) throws JsonProcessingException {
+    public GrammarResponseDto checkGrammar(String text, String language) {
         try {
             String url = "https://api.languagetool.org/v2/check";
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
@@ -82,8 +83,17 @@ public class NoteService {
             headers.add("Content-Type", "application/x-www-form-urlencoded");
             HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(params, headers);
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
             if (response.getStatusCode() == HttpStatus.OK) {
-                return objectMapper.readTree(response.getBody());
+                JsonNode jsonNode = objectMapper.readTree(response.getBody());
+                String detectedLanguage = jsonNode.get("language").get("name").asText();
+                GrammarResponseDto grammarResponseDto = new GrammarResponseDto(detectedLanguage);
+                jsonNode.get("matches").forEach(match -> {
+                    String message = match.get("message").asText();
+                    String sentence = match.get("sentence").asText();
+                    grammarResponseDto.getMatches().add(new Match(message, sentence));
+                });
+                return grammarResponseDto;
             } else {
                 throw new RuntimeException("Error while checking grammar");
             }
@@ -91,11 +101,23 @@ public class NoteService {
             throw new InvalidParamException(e.getMessage());
         }
     }
-
     private String preprocessMarkdown(String markdown) {
-        return markdown.replaceAll("\\*\\*|\\*", "")
-                .replaceAll("#+", "")
-                .replaceAll("\\[.*?\\]\\(.*?\\)", "");
+        return markdown
+                .replaceAll("(?s)(```|~~~)[\\s\\S]*?\\1", "")
+                .replaceAll("`[^`]+`", "")
+                .replaceAll("\\*\\*|\\*|__|_", "")
+                .replaceAll("(?m)^#{1,6}\\s*", "")
+                .replaceAll("(?m)^\\s*[-+*]\\s+", "")
+                .replaceAll("(?m)^\\d+\\.\\s+", "")
+                .replaceAll("!?\\[.*?]\\(.*?\\)", "")
+                .replaceAll("(?m)^>\\s*", "")
+                .replaceAll("([-*]){3,}", "")
+                .replaceAll("\\|.*?\\|", "")
+                .replaceAll("<[^>]+>", "")
+                .replaceAll("\\s{2,}", " ");
     }
 
 }
+
+
+
