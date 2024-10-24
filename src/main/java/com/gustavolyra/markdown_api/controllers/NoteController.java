@@ -1,5 +1,6 @@
 package com.gustavolyra.markdown_api.controllers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.gustavolyra.markdown_api.dto.NoteDto;
 import com.gustavolyra.markdown_api.services.NoteService;
 import org.springframework.data.domain.Page;
@@ -29,13 +30,18 @@ public class NoteController {
 
     @PostMapping("/html-convert")
     public ResponseEntity<String> convertToHtml(@RequestParam("file") MultipartFile file) throws IOException {
-        var html = noteService.renderMarkdownToHtml(new String(file.getBytes()));
+        var html = noteService.convertToHtml(new String(file.getBytes()));
         return ResponseEntity.ok(html);
     }
 
     @GetMapping()
     public ResponseEntity<Page<NoteDto>> findAll(Pageable pageable) {
         return ResponseEntity.ok(noteService.findAll(pageable));
+    }
+
+    @PostMapping("/grammar-check")
+    public ResponseEntity<JsonNode> checkGrammar(@RequestParam(defaultValue = "en-US") String language, @RequestParam("file") MultipartFile file) throws IOException {
+        return ResponseEntity.ok(noteService.checkGrammar(new String(file.getBytes()), language));
     }
 
 
